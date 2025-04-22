@@ -203,26 +203,32 @@ class Subscription extends Model
      *
      * @throws LogicException
      */
-    public function renew(): self
-    {
-        if ($this->ended() && $this->canceled()) {
-            throw new LogicException('Unable to renew canceled ended subscription.');
-        }
-
-        $subscription = $this;
-
-        DB::transaction(function () use ($subscription): void {
-            // Clear usage data
-            $subscription->usage()->delete();
-
-            // Renew period
-            $subscription->setNewPeriod();
-            $subscription->canceled_at = null;
-            $subscription->save();
-        });
-
-        return $this;
+    public function renew(array $retainFeatures = []): self
+{
+    if ($this->ended() && $this->canceled()) {
+        throw new LogicException('Unable to renew canceled ended subscription.');
     }
+
+    $subscription = $this;
+
+    DB::transaction(function () use ($subscription, $retainFeatures): void {
+        // Clear usage data, excluding specific features
+        $subscription->usage()
+            ->whereNotIn('feature_id', function ($query) use ($retainFeatures) {
+                $query->select('id')
+                    ->from(config('laravel-subscriptions.tables.features'))
+                    ->whereIn('slug', $retainFeatures);
+            })
+            ->delete();
+
+        // Renew period
+        $subscription->setNewPeriod();
+        $subscription->canceled_at = null;
+        $subscription->save();
+    });
+
+    return $this;
+}
 
     /**
      * Get bookings of the given subscriber.
