@@ -19,7 +19,7 @@ return new class extends Migration
             $table->string('slug')->unique();
             $table->json('description')->nullable();
             $table->string('timezone')->nullable();
-
+            $table->boolean('is_payment_confirmed')->default(false);
             $table->dateTime('trial_ends_at')->nullable();
             $table->dateTime('starts_at')->nullable();
             $table->dateTime('ends_at')->nullable();
